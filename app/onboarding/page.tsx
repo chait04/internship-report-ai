@@ -16,74 +16,53 @@ export default function Onboarding() {
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const checkUserProfile = async () => {
-      if (!loading && user) {
-        try {
-          const userProfile = await getUser(user.$id);
-          if (userProfile) {
-            console.log('User profile exists, redirecting to dashboard');
-            router.replace('/dashboard');
-            return;
-          }
-        } catch (error) {
-          console.error('Error checking user profile:', error);
-        }
-      } else if (!loading && !user) {
-        console.log('No user in onboarding, redirecting to home');
-        router.replace('/');
-      }
-    };
-
-    checkUserProfile();
-  }, [user, loading, router]);
-
-  // Remove duplicate checks
-  if (!loading && !user) {
-    console.log('No user in onboarding, redirecting to home');
-    router.replace('/');
-  }
-  
   const [formData, setFormData] = useState({
     prnNumber: "",
     department: "",
-    fullName: "", // Will be updated when user data is available
+    fullName: "",
     studentMentor: "",
     internshipRole: "",
     additionalRole: "",
   });
 
   useEffect(() => {
-    if (user?.name) {
-      console.log('Pre-filling user data:', user.name);
-      setFormData(prev => ({
-        ...prev,
-        fullName: user.name
-      }));
+    if (!loading) {
+      if (!user) {
+        router.replace('/');
+        return;
+      }
+
+      const checkUserProfile = async () => {
+        try {
+          const userProfile = await getUser(user.$id);
+          if (userProfile) {
+            router.replace('/dashboard');
+          } else if (user.name) {
+            setFormData(prev => ({
+              ...prev,
+              fullName: user.name
+            }));
+          }
+        } catch (error) {
+          console.error('Error checking user profile:', error);
+        }
+      };
+
+      checkUserProfile();
     }
-  }, [user]);
+  }, [user, loading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      console.log('No user found in onboarding');
-      return;
-    }
+    if (!user) return;
 
-    try {
-      console.log('Creating user profile with data:', {
-        userId: user.$id,
-        ...formData,
-        email: user.email
-      });
-      
+    try {      
       const userData = {
         ...formData,
         email: user.email,
       };
       
-      const result = await createUser(user.$id, userData);
-      console.log('User profile created:', result);
+      await createUser(user.$id, userData);
       
       toast({
         title: "Profile created",
@@ -106,6 +85,14 @@ export default function Onboarding() {
       [e.target.name]: e.target.value,
     }));
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted p-8">

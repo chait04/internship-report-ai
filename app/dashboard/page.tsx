@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   LogOut,
   Loader2,
-  FileText, // Import FileText only once
+  FileText,
 } from "lucide-react";
 import { DATABASE_ID, databases, REPORTS_COLLECTION_ID } from "@/lib/appwrite";
 import { ReportForm } from "./components/report-form";
@@ -19,7 +19,6 @@ import { generateReportContent } from "@/lib/report-generator";
 import { Report, ReportFormData } from "@/types/report";
 import { UserProfile } from "@/types/user";
 import * as Docx from "docx";
-// @ts-ignore
 import { generatePDF } from '@/lib/pdf-generator';
 
 export default function Dashboard() {
@@ -64,9 +63,8 @@ export default function Dashboard() {
   const handleCreateReport = async (formData: ReportFormData) => {
     if (!user) return;
 
-    try {
+    try {      
       const report = await createReport(user.$id, formData);
-      // Explicitly type the report as Report to ensure type safety
       setReports((prev) => [...prev, report as unknown as Report]);
       toast({
         title: "Report created",

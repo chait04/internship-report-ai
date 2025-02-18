@@ -1,29 +1,58 @@
 "use client";
 
 import { useRouter } from 'next/navigation';
-import { account, DATABASE_ID, databases, USERS_COLLECTION_ID } from '@/lib/appwrite';
+import { account, databases, USERS_COLLECTION_ID } from '@/lib/appwrite';
 import { useState, useEffect } from 'react';
 import { Query } from 'appwrite';
+import { DATABASE_ID } from '../lib/appwrite';
 
 export function useAuth() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const session = await account.get();
-        setUser(session);
-      } catch (error) {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!initialized) {
+      const checkSession = async () => {
+        try {
+          const session = await account.get();
+          setUser(session);
+        } catch (error) {
+          setUser(null);
+        } finally {
+          setLoading(false);
+          setInitialized(true);
+        }
+      };
 
-    checkSession();
-  }, []);
+      checkSession();
+    }
+  }, [initialized]);
+
+  useEffect(() => {
+    if (!loading && user) {
+      const checkUserProfile = async () => {
+        try {
+          const userDoc = await databases.listDocuments(
+            DATABASE_ID,
+            USERS_COLLECTION_ID,
+            [Query.equal('userId', user.$id)]
+          );
+          
+          if (userDoc.documents.length > 0) {
+            router.replace('/dashboard');
+          } else {
+            router.replace('/onboarding');
+          }
+        } catch (error) {
+          console.error('Error checking user profile:', error);
+        }
+      };
+
+      checkUserProfile();
+    }
+  }, [loading, user, router]);
 
   const signInWithGoogle = async () => {
     try {
@@ -33,8 +62,8 @@ export function useAuth() {
       
       await account.createOAuth2Session(
         'google',
-        `${baseURL}/dashboard`,  // Success URL
-        `${baseURL}`   // Failure URL
+        `${baseURL}`,
+        `${baseURL}`
       );
     } catch (error) {
       console.error('OAuth error:', error);
@@ -46,6 +75,7 @@ export function useAuth() {
     try {
       await account.deleteSession('current');
       setUser(null);
+      setInitialized(false);
       router.push('/');
     } catch (error) {
       console.error('Sign out error:', error);
